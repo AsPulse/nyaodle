@@ -1,0 +1,108 @@
+name: Build Docker Image
+
+on:
+  push:
+    branches:
+      - main
+env:
+  TMP_LOCAL_IMAGE: localhost:5000/user/app
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform:
+          - linux/amd64
+          - linux/arm64
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Prepare
+      run: |
+        mkdir -p /tmp/images
+        platform=${{ matrix.platform }}
+        echo "PLATFORM=${platform//\//-}" >> $GITHUB_ENV
+        echo "TARFILE=${platform//\//-}.tar" >> $GITHUB_ENV
+        echo "TAG=${{ env.TMP_LOCAL_IMAGE }}:${platform//\//-}" >> $GITHUB_ENV
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      with:
+        buildkitd-config: ./buildkitd.toml
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: false
+        platforms: ${{ matrix.platform }}
+        tags: ${{ env.TAG }}
+        outputs: type=docker,dest=/tmp/images/${{ env.TARFILE }}
+        cache-from: type=gha 
+        cache-to: type=gha,mode=max 
+        secrets: |
+          SCCACHE_ENDPOINT=${{ secrets.SCCACHE_ENDPOINT }}
+          SCCACHE_AWS_ACCESS_KEY_ID=${{ secrets.SCCACHE_AWS_ACCESS_KEY_ID }}
+          SCCACHE_AWS_SECRET_ACCESS_KEY=${{ secrets.SCCACHE_AWS_SECRET_ACCESS_KEY }}
+
+    - name: Upload image
+      uses: actions/upload-artifact@v4
+      with:
+        name: image-${{ env.PLATFORM }}
+        path: /tmp/images/${{ env.TARFILE }}
+        if-no-files-found: error
+        retention-days: 1
+
+  push:
+    runs-on: ubuntu-latest
+    needs:
+      - build
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+    steps:
+    - name: Merge Artifacts
+      uses: actions/upload-artifact/merge@v4
+      with:
+        name: images
+        pattern: image-*
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: images
+        path: /tmp/images
+
+    - name: Load images
+      run: |
+        for image in /tmp/images/*.tar; do
+          docker load -i $image
+        done
+
+    - name: Push images to local registry
+      run: |
+        docker push -a ${{ env.TMP_LOCAL_IMAGE }}
+
+    - name: Login to Harbor 
+      uses: docker/login-action@v3
+      with:
+        registry: harbor.aspulse.dev
+        username: ${{ secrets.HARBOR_ASPULSE_USERNAME }}
+        password: ${{ secrets.HARBOR_ASPULSE_PASSWORD }}
+      
+    - name: Extract metadata (tags, labels) for Docker
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: harbor.aspulse.dev/aspulse/nyaodle
+        tags: |
+          type=sha,prefix=commit-,format=long
+
+    - name: Create manifest list and push
+      run: |
+        docker buildx imagetools create \
+          $(echo "${{ steps.meta.outputs.tags }}" | tr ',' ' ' | awk '{for(i=1;i<=NF;i++) printf "-t %s ", $i}') \
+          $(docker image ls --format '{{.Repository}}:{{.Tag}}' '${{ env.TMP_LOCAL_IMAGE }}' | tr '\n' ' ')
