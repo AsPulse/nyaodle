@@ -6,8 +6,14 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.81"
+bson = "2.10.0"
+chrono = "0.4.37"
 dotenv = "0.15.0"
 env_logger = "0.11.3"
+futures = "0.3.30"
 log = "0.4.21"
+mongodb = "2.8.2"
 poise = "0.6.1"
+serde = "1.0.197"
 tokio = { version = "1.36.0", features = ["full"] }
