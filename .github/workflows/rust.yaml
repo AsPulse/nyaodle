@@ -1,0 +1,59 @@
+name: rust
+
+on:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  cargo-fmt:
+    strategy:
+      matrix:
+        toolchain: [ "stable", "nightly" ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup rust-toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: clippy, rustfmt
+      - name: Run rustfmt using cargo
+        shell: bash
+        run: cargo fmt --all -- --check
+
+  cargo-clippy:
+    strategy:
+      matrix:
+        toolchain: [ "stable", "nightly" ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup rust-toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: clippy, rustfmt
+      - name: Run cargo-clippy -Dwarning
+        shell: bash
+        run: cargo clippy -- -Dwarnings
+
+  cargo-test:
+    strategy:
+      matrix:
+        toolchain: [ "stable", "nightly" ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup rust-toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: clippy, rustfmt
+      - name: Run cargo-test
+        shell: bash
+        working-directory: ${{ inputs.directory }}
+        run: cargo test
