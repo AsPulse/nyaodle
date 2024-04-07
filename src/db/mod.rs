@@ -1,6 +1,9 @@
+pub mod interaction;
 pub mod race;
+pub mod threader_configurations;
 
 use anyhow::Result;
+
 use log::info;
 
 use mongodb::bson::doc;
@@ -8,17 +11,26 @@ use mongodb::bson::doc;
 use mongodb::IndexModel;
 
 use std::env;
+use std::time::Duration;
 
 use mongodb::options::{ClientOptions, IndexOptions};
 
-use crate::{ApplicationContext, Context};
+use crate::{ApplicationContext, Context, Data};
 
+use self::interaction::PendingInteractionDoc;
 use self::race::WsRace;
+use self::threader_configurations::ThreaderConfigurationDoc;
 
 pub struct MongoDB {
     pub client: mongodb::Client,
     pub db: mongodb::Database,
+
+    pub(self) ws_race: mongodb::Collection<WsRace>,
+    pub threader_configurations: mongodb::Collection<ThreaderConfigurationDoc>,
+    pub interactions: mongodb::Collection<PendingInteractionDoc>,
 }
+
+pub struct Collections {}
 
 impl MongoDB {
     pub async fn connect() -> Result<MongoDB> {
@@ -30,12 +42,18 @@ impl MongoDB {
         let db = client.database(db_name.as_str());
         info!("Connected to MongoDB ({}).", db_name);
 
-        let mongo = Self { client, db };
+        let mongo = Self {
+            client,
+            ws_race: db.collection::<WsRace>("ws_race"),
+            threader_configurations: db
+                .collection::<ThreaderConfigurationDoc>("threader_configurations"),
+            interactions: db.collection::<PendingInteractionDoc>("interactions"),
+            db,
+        };
 
         info!("Creating indexes...");
         mongo
-            .ws_race()
-            .await
+            .ws_race
             .create_index(
                 IndexModel::builder()
                     .keys(doc! { "kind": 1, "token": 1 })
@@ -44,13 +62,33 @@ impl MongoDB {
                 None,
             )
             .await?;
+        mongo
+            .ws_race
+            .create_index(
+                IndexModel::builder()
+                    .keys(doc! { "created_at": 1 })
+                    .options(
+                        IndexOptions::builder()
+                            .expire_after(Duration::from_secs(300))
+                            .build(),
+                    )
+                    .build(),
+                None,
+            )
+            .await?;
+        mongo
+            .interactions
+            .create_index(
+                IndexModel::builder()
+                    .keys(doc! { "interaction.config_id": 1 })
+                    .options(IndexOptions::builder().build())
+                    .build(),
+                None,
+            )
+            .await?;
         info!("Indexes created.");
 
         Ok(mongo)
-    }
-
-    async fn ws_race(&self) -> mongodb::Collection<WsRace> {
-        self.db.collection::<WsRace>("ws_race")
     }
 }
 pub trait MongoDBExt {
@@ -66,5 +104,11 @@ impl MongoDBExt for Context<'_> {
 impl MongoDBExt for ApplicationContext<'_> {
     fn mongo(&self) -> &MongoDB {
         &self.data().mongo
+    }
+}
+
+impl MongoDBExt for Data {
+    fn mongo(&self) -> &MongoDB {
+        &self.mongo
     }
 }

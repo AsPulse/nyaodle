@@ -1,7 +1,9 @@
+use crate::ApplicationContext;
+
 use super::MongoDBExt;
 
 use anyhow::Result;
-use log::{info, warn};
+use log::{debug, info, warn};
 use mongodb::bson::oid::ObjectId;
 use mongodb::bson::{doc, DateTime};
 
@@ -11,12 +13,14 @@ use mongodb::options::UpdateOptions;
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RaceKind {
+    InteractionCreateEvent,
     CommandInvocation,
     ReceiveInteraction,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) struct WsRace {
+    #[serde(skip_serializing)]
     _id: Option<ObjectId>,
     kind: RaceKind,
     token: String,
@@ -24,11 +28,18 @@ pub(super) struct WsRace {
     created_at: DateTime,
 }
 
+pub async fn race_interaction(ctx: &ApplicationContext<'_>) -> Result<bool> {
+    race(
+        ctx,
+        RaceKind::ReceiveInteraction,
+        ctx.interaction.id.to_string(),
+    )
+    .await
+}
 pub async fn race(ctx: &impl MongoDBExt, kind: RaceKind, token: String) -> Result<bool> {
     let mongo = &ctx.mongo();
     let race = mongo
-        .ws_race()
-        .await
+        .ws_race
         .update_one(
             doc! { "kind": bson::to_bson(&kind).unwrap(), "token": &token },
             doc! {
@@ -50,7 +61,7 @@ pub async fn race(ctx: &impl MongoDBExt, kind: RaceKind, token: String) -> Resul
         return Ok(true);
     };
     if race.upserted_id.is_some() {
-        info!("Acquired: {:?} ({:?})", kind, token);
+        debug!("Acquired: {:?} ({:?})", kind, token);
         Ok(false)
     } else {
         info!("Skipped: {:?} ({:?})", kind, token);

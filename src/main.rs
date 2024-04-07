@@ -1,15 +1,20 @@
 pub mod db;
+pub mod event;
 pub mod framework;
 pub mod grubber;
+pub mod threader;
 pub mod ui;
 
-use log::info;
 use poise::serenity_prelude as serenity;
 use std::env;
 
 use dotenv::dotenv;
 
-pub(crate) struct Data {
+use crate::db::race::race;
+
+use self::event::event_handler;
+
+pub struct Data {
     pub mongo: db::MongoDB,
 }
 pub(crate) type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -48,16 +53,4 @@ async fn main() {
         .await;
 
     client.unwrap().start().await.unwrap();
-}
-
-async fn event_handler(
-    _ctx: &serenity::Context,
-    event: &serenity::FullEvent,
-    _framework: poise::FrameworkContext<'_, Data, Error>,
-    _data: &Data,
-) -> Result<(), Error> {
-    if let serenity::FullEvent::Ready { data_about_bot, .. } = event {
-        info!("Logged in as {}", data_about_bot.user.name);
-    }
-    Ok(())
 }
