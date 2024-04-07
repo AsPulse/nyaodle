@@ -3,13 +3,17 @@
 use crate::db::race::race_interaction;
 use crate::grubber::GrubberMessage;
 use crate::grubber::GrubberState;
+use crate::grubber::NyaodleRequest;
 use crate::threader::MessageBulk;
 use crate::ui::configure_threader::create::configure_threader;
 use log::info;
+use log::warn;
 use poise::command;
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::ChannelId;
 use poise::serenity_prelude::GetMessages;
+use poise::serenity_prelude::GuildChannel;
+use poise::serenity_prelude::Message;
 use poise::serenity_prelude::MessageId;
 use serde::Deserialize;
 use serde::Serialize;
@@ -22,16 +26,20 @@ use super::Grubber;
 #[command(context_menu_command = "これ以降のメッセージを移動")]
 pub async fn move_channel_subsequent(
     ctx: ApplicationContext<'_>,
-    _message: serenity::Message,
+    message: serenity::Message,
 ) -> Result<(), Error> {
     if race_interaction(&ctx).await? {
         return Ok(());
     }
-    configure_threader(ctx).await?;
+    let request = NyaodleRequest::ChannelSubsequent(ChannelSubsequent {
+        message_id: message.id,
+        channel_id: message.channel_id,
+    });
+    configure_threader(ctx, request).await?;
     Ok(())
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ChannelSubsequent {
     message_id: MessageId,
     channel_id: ChannelId,
@@ -47,7 +55,7 @@ impl Grubber for ChannelSubsequentGrubber<'_> {
         &self,
         id: &str,
         tx: tokio::sync::mpsc::Sender<super::GrubberMessage>,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), Error> {
         let ctx = self.ctx.clone();
         info!("New channel_subsequent grubber started with id={}", id);
         let Some(channel) = ctx
@@ -56,27 +64,24 @@ impl Grubber for ChannelSubsequentGrubber<'_> {
             .await?
             .guild()
         else {
-            return Err(anyhow::anyhow!("Specified channel is not a guild channel."));
+            panic!("Specified channel is not a guild channel. (maybe DM channel)");
         };
         let mut state = GrubberState {
             num_total_messages: 1,
             num_grubbed_messages: 1,
             is_completed: false,
         };
+        info!("Channel_subsequent grubber loading message_start id={}", id);
         let message_start = ctx
             .http
             .get_message(self.property.channel_id, self.property.message_id)
             .await?;
         let mut message_pointer = message_start.clone();
-        let message_end = ctx
-            .http
-            .get_message(
-                self.property.channel_id,
-                channel
-                    .last_message_id
-                    .expect("Channel is not Text Channel."),
-            )
-            .await?;
+        info!(
+            "Channel_subsequent grubber loading message_end id={}, message_id={:?}",
+            id, channel.last_message_id
+        );
+        let message_end = retrieve_final_message(&ctx, &channel).await?;
 
         tx.send(GrubberMessage::MessageTranfer(vec![MessageBulk::Continue(
             message_pointer.clone(),
@@ -87,11 +92,18 @@ impl Grubber for ChannelSubsequentGrubber<'_> {
         tokio::spawn(async move {
             let ctx = &ctx;
             loop {
-                let approximate_total = message_end.position.unwrap()
-                    - message_pointer.position.unwrap()
-                    + state.num_grubbed_messages
-                    + 1;
-                state.num_total_messages = approximate_total.max(state.num_grubbed_messages);
+                if let (Some(pointer_position), Some(end_position)) =
+                    (message_pointer.position, message_end.position)
+                {
+                    let approximate_total =
+                        end_position - pointer_position + state.num_grubbed_messages + 1;
+                    state.num_total_messages = approximate_total.max(state.num_grubbed_messages);
+                } else {
+                    warn!(
+                        "Channel_subsequent grubber failed to calculate approximate total messages id={}",
+                        id
+                    );
+                }
                 tx.send(GrubberMessage::StateUpdate(state.clone()))
                     .await
                     .unwrap();
@@ -128,4 +140,25 @@ impl Grubber for ChannelSubsequentGrubber<'_> {
         });
         Ok(())
     }
+}
+async fn retrieve_final_message(
+    ctx: &'_ serenity::Context,
+    channel: &GuildChannel,
+) -> Result<Message, Error> {
+    let message = channel
+        .messages(
+            ctx,
+            GetMessages::new()
+                .before(
+                    channel
+                        .last_message_id
+                        .expect("The channel is not text channel."),
+                )
+                .limit(1),
+        )
+        .await?;
+    Ok(message
+        .first()
+        .expect("The channel has no messages.")
+        .clone())
 }

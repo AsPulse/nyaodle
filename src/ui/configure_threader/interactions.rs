@@ -11,6 +11,7 @@ use crate::db::threader_configurations::ThreaderConfigurationDoc;
 use crate::db::MongoDBExt;
 use crate::event::component_interaction::ComponentInteractionEvent;
 use crate::framework::interactions::PendingInteraction;
+use crate::grubber::NyaodleRequest;
 use crate::threader::ThreaderConfiguration;
 use crate::ApplicationContext;
 
@@ -55,11 +56,15 @@ impl ConfigureThreaderDocs {
 }
 
 impl ConfigureThreaderDocs {
-    pub async fn create_and_insert(ctx: &ApplicationContext<'_>) -> Result<Self> {
+    pub async fn create_and_insert(
+        ctx: &ApplicationContext<'_>,
+        req: NyaodleRequest,
+    ) -> Result<Self> {
         let mongo = ctx.mongo();
         let mut config = ThreaderConfigurationDoc {
             _id: None,
             configuration: ThreaderConfiguration::default(),
+            request: req,
             created_at: DateTime::now(),
         };
         let config_doc = mongo

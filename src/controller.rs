@@ -1,9 +1,9 @@
-use anyhow::Result;
-use log::{info, warn};
+use log::{debug, info, warn};
 use tokio::sync::mpsc;
 
 use crate::grubber::{Grubber, GrubberMessage};
 use crate::threader::{MessageBulk, Threader, ThreaderMessage};
+use crate::Error;
 
 #[derive(Debug, Clone)]
 pub struct NyaodleState {
@@ -20,8 +20,7 @@ pub async fn nyaodle(
     tx: mpsc::Sender<NyaodleState>,
     grubber: impl Grubber,
     threader: impl Threader,
-) -> Result<()> {
-    info!("New nyaodle controller started with id={}", id);
+) -> Result<(), Error> {
     let (tx_grubber, mut rx_grubber) = mpsc::channel::<GrubberMessage>(4);
     let (tx_threader, mut rx_threader) = mpsc::channel::<ThreaderMessage>(4);
     let (tx_threader_message, rx_threader_message) = mpsc::channel::<MessageBulk>(32);
@@ -41,6 +40,7 @@ pub async fn nyaodle(
         .await?;
 
     tokio::spawn(async move {
+        info!("New nyaodle controller started with id={}", id);
         loop {
             tokio::select! {
                 Some(message) = rx_grubber.recv() => {
@@ -86,6 +86,6 @@ pub async fn nyaodle(
     Ok(())
 }
 fn update_state(id: &str, new_state: &mut NyaodleState) -> bool {
-    info!("nyaodle state updated id={} state={:?}", id, new_state);
+    debug!("nyaodle state updated id={} state={:?}", id, new_state);
     new_state.is_grubbed && new_state.is_threaded
 }

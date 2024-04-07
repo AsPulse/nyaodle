@@ -1,7 +1,10 @@
-use anyhow::Result;
+pub mod debug_threader;
+
 use poise::serenity_prelude::{ChannelId, Message};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
+
+use crate::Error;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -18,18 +21,19 @@ impl Default for ThreaderConfiguration {
 }
 
 pub trait Threader {
-    async fn thread(
+    fn thread(
         &self,
         id: &str,
         tx: mpsc::Sender<ThreaderMessage>,
         rx: mpsc::Receiver<MessageBulk>,
-    ) -> Result<()>;
+    ) -> impl std::future::Future<Output = Result<(), Error>> + Send;
 }
 
 pub enum ThreaderMessage {
     StateUpdate(ThreaderState),
 }
 
+#[derive(Debug, Clone)]
 pub struct ThreaderState {
     pub(crate) num_threaded_messages: u64,
     pub(crate) is_completed: bool,

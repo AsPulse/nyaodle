@@ -1,24 +1,40 @@
 //! 移動させるメッセージを取得する
 
-use anyhow::Result;
+use poise::serenity_prelude as serenity;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
 use crate::threader::MessageBulk;
+use crate::Error;
 
-use self::channel_subsequent::ChannelSubsequent;
+use self::channel_subsequent::{ChannelSubsequent, ChannelSubsequentGrubber};
 
 pub mod channel_subsequent;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
-enum NyaodleRequest {
+pub enum NyaodleRequest {
     ChannelSubsequent(ChannelSubsequent),
 }
 
+impl NyaodleRequest {
+    pub fn create_grabber<'a>(&self, ctx: &'a serenity::Context) -> impl Grubber + 'a {
+        match self {
+            NyaodleRequest::ChannelSubsequent(property) => ChannelSubsequentGrubber {
+                ctx,
+                property: property.clone(),
+            },
+        }
+    }
+}
+
 pub trait Grubber {
-    async fn grub(&self, id: &str, tx: mpsc::Sender<GrubberMessage>) -> Result<()>;
+    fn grub(
+        &self,
+        id: &str,
+        tx: mpsc::Sender<GrubberMessage>,
+    ) -> impl std::future::Future<Output = Result<(), Error>> + std::marker::Send;
 }
 
 pub enum GrubberMessage {
