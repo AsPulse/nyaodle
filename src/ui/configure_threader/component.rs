@@ -32,7 +32,7 @@ pub fn configure_threader_component(docs: &ConfigureThreaderDocs) -> Vec<CreateA
         ThreaderConfiguration::AnotherChannel { channel_id } => {
             components.push(CreateActionRow::SelectMenu(
                 CreateSelectMenu::new(
-                    "another_channel",
+                    docs.change_channel_id.to_hex(),
                     CreateSelectMenuKind::Channel {
                         channel_types: Some(vec![ChannelType::Text, ChannelType::Private]),
                         default_channels: channel_id.map(|id| vec![id]),

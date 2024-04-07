@@ -8,4 +8,5 @@ pub enum PendingInteraction {
     SelectThreaders { config_id: ObjectId },
     ExecuteNyaodle { config_id: ObjectId },
     CloseThreadersConfig { config_id: ObjectId },
+    ChangeChannelId { config_id: ObjectId },
 }

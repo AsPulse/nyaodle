@@ -3,7 +3,7 @@ pub mod create;
 pub mod interactions;
 
 use bson::doc;
-use log::info;
+use log::{info, warn};
 use poise::serenity_prelude::{
     ComponentInteractionDataKind, CreateInteractionResponse, CreateInteractionResponseMessage,
 };
@@ -77,6 +77,7 @@ pub(crate) async fn close_threaders_config(
                         "select_threaders",
                         "execute_nyaodle",
                         "close_threaders_config",
+                        "change_channel_id"
                     ]
                 },
                 "interaction.config_id": docs.config._id,
@@ -89,5 +90,33 @@ pub(crate) async fn close_threaders_config(
         .delete_one(doc! { "_id": docs.config._id }, None)
         .await?;
     info!("closed configure_threader UI id={:?}", docs.config._id);
+    Ok(())
+}
+
+pub(crate) async fn change_channel_id(event: &ComponentInteractionEvent<'_>) -> Result<(), Error> {
+    let mut docs = ConfigureThreaderDocs::from_event(event).await?;
+    let channel_id = match &event.interaction.data.kind {
+        ComponentInteractionDataKind::ChannelSelect { values: data } => data[0],
+        _ => {
+            panic!("Unexpected data kind: {:?}", event.interaction.data.kind);
+        }
+    };
+    if !matches!(
+        docs.config.configuration,
+        ThreaderConfiguration::AnotherChannel { .. }
+    ) {
+        warn!(
+            "change_channel_id called but another threader selected: {:?}",
+            docs.config.configuration
+        );
+    }
+    docs.config.configuration = ThreaderConfiguration::AnotherChannel {
+        channel_id: Some(channel_id),
+    };
+    docs.apply(event).await?;
+    info!(
+        "updated configure_threader UI (change_channel_id) id={:?}",
+        docs.config._id
+    );
     Ok(())
 }

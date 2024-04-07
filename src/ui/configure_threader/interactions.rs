@@ -22,6 +22,7 @@ pub struct ConfigureThreaderDocs {
     pub select_id: ObjectId,
     pub execute_id: ObjectId,
     pub close_id: ObjectId,
+    pub change_channel_id: ObjectId,
 }
 
 impl ConfigureThreaderDocs {
@@ -85,11 +86,16 @@ impl ConfigureThreaderDocs {
                         interaction: PendingInteraction::CloseThreadersConfig { config_id: id },
                         created_at: DateTime::now(),
                     },
+                    PendingInteractionDoc {
+                        _id: None,
+                        interaction: PendingInteraction::ChangeChannelId { config_id: id },
+                        created_at: DateTime::now(),
+                    },
                 ],
                 None,
             )
             .await?;
-        let ids = [0, 1, 2]
+        let ids = [0, 1, 2, 3]
             .iter()
             .map(|i| ids.inserted_ids.get(i).unwrap().as_object_id().unwrap())
             .collect::<Vec<ObjectId>>();
@@ -99,6 +105,7 @@ impl ConfigureThreaderDocs {
             select_id: ids[0],
             execute_id: ids[1],
             close_id: ids[2],
+            change_channel_id: ids[3],
         })
     }
 
@@ -143,12 +150,20 @@ impl ConfigureThreaderDocs {
                             "cond": { "$eq": ["$$v.interaction.type", "close_threaders_config"] }
                         }
                     },
+                    "change_channel_id": {
+                        "$filter": {
+                            "input": "$interactions",
+                            "as": "v",
+                            "cond": { "$eq": ["$$v.interaction.type", "change_channel_id"] }
+                        }
+                    },
                 } },
                 doc! { "$project": {
                     "config": 1,
                     "select_id": { "$arrayElemAt": ["$select_id._id", 0] },
                     "execute_id": { "$arrayElemAt": ["$execute_id._id", 0] },
                     "close_id": { "$arrayElemAt": ["$close_id._id", 0] },
+                    "change_channel_id": { "$arrayElemAt": ["$change_channel_id._id", 0] },
                 } },
             ],
             None,

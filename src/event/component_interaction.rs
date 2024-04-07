@@ -3,7 +3,7 @@ use poise::serenity_prelude as serenity;
 
 use crate::framework::interactions::PendingInteraction;
 use crate::ui::configure_threader::{
-    close_threaders_config, execute_nyaodle, update_threader_selection,
+    change_channel_id, close_threaders_config, execute_nyaodle, update_threader_selection,
 };
 use crate::{Data, Error};
 
@@ -27,6 +27,9 @@ impl ComponentInteractionEvent<'_> {
             }
             PendingInteraction::CloseThreadersConfig { .. } => {
                 close_threaders_config(self).await?;
+            }
+            PendingInteraction::ChangeChannelId { .. } => {
+                change_channel_id(self).await?;
             }
             #[allow(unreachable_patterns)]
             _ => {
