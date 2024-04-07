@@ -35,8 +35,10 @@ pub async fn nyaodle(
         is_completed: false,
     };
 
-    grubber.grub(tx_grubber)?;
-    threader.thread(tx_threader, rx_threader_message)?;
+    grubber.grub(&id, tx_grubber).await?;
+    threader
+        .thread(&id, tx_threader, rx_threader_message)
+        .await?;
 
     tokio::spawn(async move {
         loop {

@@ -18,8 +18,9 @@ impl Default for ThreaderConfiguration {
 }
 
 pub trait Threader {
-    fn thread(
+    async fn thread(
         &self,
+        id: &str,
         tx: mpsc::Sender<ThreaderMessage>,
         rx: mpsc::Receiver<MessageBulk>,
     ) -> Result<()>;

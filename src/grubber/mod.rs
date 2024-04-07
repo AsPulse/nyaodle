@@ -6,17 +6,19 @@ use tokio::sync::mpsc;
 
 use crate::threader::MessageBulk;
 
+use self::channel_subsequent::ChannelSubsequent;
+
 pub mod channel_subsequent;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 enum NyaodleRequest {
-    ChannelSubsequent { message_id: u64 },
+    ChannelSubsequent(ChannelSubsequent),
 }
 
 pub trait Grubber {
-    fn grub(&self, tx: mpsc::Sender<GrubberMessage>) -> Result<()>;
+    async fn grub(&self, id: &str, tx: mpsc::Sender<GrubberMessage>) -> Result<()>;
 }
 
 pub enum GrubberMessage {
@@ -24,6 +26,7 @@ pub enum GrubberMessage {
     MessageTranfer(Vec<MessageBulk>),
 }
 
+#[derive(Debug, Clone)]
 pub struct GrubberState {
     pub(crate) num_total_messages: u64,
     pub(crate) num_grubbed_messages: u64,
