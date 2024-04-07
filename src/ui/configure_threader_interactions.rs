@@ -1,8 +1,8 @@
 use anyhow::Result;
 use bson::oid::ObjectId;
-use bson::{doc, Bson, DateTime};
+use bson::{doc, DateTime};
 use futures::StreamExt;
-use log::error;
+
 use serde::{Deserialize, Serialize};
 
 use crate::db::interaction::PendingInteractionDoc;

@@ -4,8 +4,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::threader::ThreaderConfiguration;
 
-use super::MongoDB;
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ThreaderConfigurationDoc {
     #[serde(skip_serializing)]

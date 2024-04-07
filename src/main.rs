@@ -5,13 +5,12 @@ pub mod grubber;
 pub mod threader;
 pub mod ui;
 
-use log::info;
 use poise::serenity_prelude as serenity;
 use std::env;
 
 use dotenv::dotenv;
 
-use crate::db::race::{race, RaceKind};
+use crate::db::race::race;
 
 use self::event::event_handler;
 

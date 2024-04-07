@@ -1,14 +1,11 @@
 pub mod component_interaction;
 
 use log::{info, warn};
-use poise::serenity_prelude::{
-    self as serenity, CreateActionRow, CreateButton, CreateInteractionResponse,
-    CreateInteractionResponseMessage,
-};
+use poise::serenity_prelude::{self as serenity};
 
-use crate::db::race::{self, RaceKind};
+use crate::db::race::RaceKind;
 use crate::db::MongoDBExt;
-use crate::framework::interactions::PendingInteraction;
+
 use crate::race;
 use crate::{Data, Error};
 
