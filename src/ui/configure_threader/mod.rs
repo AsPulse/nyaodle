@@ -2,9 +2,13 @@ pub mod component;
 pub mod create;
 pub mod interactions;
 
+use bson::doc;
 use log::info;
-use poise::serenity_prelude::ComponentInteractionDataKind;
+use poise::serenity_prelude::{
+    ComponentInteractionDataKind, CreateInteractionResponse, CreateInteractionResponseMessage,
+};
 
+use crate::db::MongoDBExt;
 use crate::event::component_interaction::ComponentInteractionEvent;
 use crate::threader::ThreaderConfiguration;
 use crate::Error;
@@ -38,5 +42,52 @@ pub(crate) async fn update_threader_selection(
         "updated configure_threader UI (threader_selection) id={:?}",
         docs.config._id
     );
+    Ok(())
+}
+
+pub(crate) async fn execute_nyaodle(event: &ComponentInteractionEvent<'_>) -> Result<(), Error> {
+    let docs = ConfigureThreaderDocs::from_event(event).await?;
+    close_threaders_config(event).await?;
+    info!(
+        "executed configure_threader UI (execute_nyaodle) id={:?}",
+        docs.config._id
+    );
+    Ok(())
+}
+
+pub(crate) async fn close_threaders_config(
+    event: &ComponentInteractionEvent<'_>,
+) -> Result<(), Error> {
+    let docs = ConfigureThreaderDocs::from_event(event).await?;
+    let mongo = event.data.mongo();
+    event
+        .interaction
+        .create_response(
+            event.ctx,
+            CreateInteractionResponse::UpdateMessage(CreateInteractionResponseMessage::default()),
+        )
+        .await?;
+    event.interaction.delete_response(event.ctx).await?;
+    mongo
+        .interactions
+        .delete_many(
+            doc! {
+                "interactions.type": {
+                    "$in": [
+                        "select_threaders",
+                        "execute_nyaodle",
+                        "close_threaders_config",
+                    ]
+                },
+                "interactions.config_id": docs.config._id,
+            },
+            None,
+        )
+        .await?;
+    mongo
+        .threader_configurations
+        .delete_one(doc! { "_id": docs.config._id }, None)
+        .await?;
+    info!("closed configure_threader UI id={:?}", docs.config._id);
     Ok(())
 }

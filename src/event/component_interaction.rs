@@ -2,7 +2,9 @@ use log::warn;
 use poise::serenity_prelude as serenity;
 
 use crate::framework::interactions::PendingInteraction;
-use crate::ui::configure_threader::update_threader_selection;
+use crate::ui::configure_threader::{
+    close_threaders_config, execute_nyaodle, update_threader_selection,
+};
 use crate::{Data, Error};
 
 #[derive(Clone)]
@@ -20,6 +22,13 @@ impl ComponentInteractionEvent<'_> {
             PendingInteraction::SelectThreaders { .. } => {
                 update_threader_selection(self).await?;
             }
+            PendingInteraction::ExecuteNyaodle { .. } => {
+                execute_nyaodle(self).await?;
+            }
+            PendingInteraction::CloseThreadersConfig { .. } => {
+                close_threaders_config(self).await?;
+            }
+            #[allow(unreachable_patterns)]
             _ => {
                 warn!(
                     "No handler found for custom_id: {}, interaction: {:?}",
