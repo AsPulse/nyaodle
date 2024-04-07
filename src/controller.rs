@@ -1,0 +1,90 @@
+use anyhow::Result;
+use log::{info, warn};
+use poise::serenity_prelude::Message;
+use tokio::sync::mpsc;
+
+use crate::grubber::{Grubber, GrubberMessage};
+use crate::threader::{MessageBulk, Threader, ThreaderMessage};
+
+#[derive(Debug, Clone)]
+pub struct NyaodleState {
+    pub num_total_messages: u64,
+    pub num_grubbed_messages: u64,
+    pub num_threaded_messages: u64,
+    pub is_grubbed: bool,
+    pub is_threaded: bool,
+    pub is_completed: bool,
+}
+
+pub async fn nyaodle(
+    id: String,
+    tx: mpsc::Sender<NyaodleState>,
+    grubber: impl Grubber,
+    threader: impl Threader,
+) -> Result<()> {
+    info!("New nyaodle controller started with id={}", id);
+    let (tx_grubber, rx_grubber) = mpsc::channel::<GrubberMessage>(4);
+    let (tx_threader, rx_threader) = mpsc::channel::<ThreaderMessage>(4);
+    let (tx_threader_message, rx_threader_message) = mpsc::channel::<Message>(32);
+
+    let mut state = NyaodleState {
+        num_total_messages: 0,
+        num_grubbed_messages: 0,
+        num_threaded_messages: 0,
+        is_grubbed: false,
+        is_threaded: false,
+        is_completed: false,
+    };
+
+    let grubber_handle = grubber.grub(tx_grubber)?;
+    let threader_handle = threader.thread(tx_threader, rx_threader_message)?;
+
+    tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                Some(message) = rx_grubber.recv() => {
+                    match message {
+                        GrubberMessage::StateUpdate(state_update) => {
+                            state.num_total_messages = state_update.num_total_messages;
+                            state.num_grubbed_messages = state_update.num_grubbed_messages;
+                            state.is_grubbed = state_update.is_completed;
+                            let finished = update_state(&id, &mut state);
+                            tx.send(state.clone()).await.unwrap();
+                            if finished {
+                                warn!("nyaodle controller finished with grubber message id={}", id);
+                                break;
+                            }
+                        }
+                        GrubberMessage::MessageTranfer(messages) => {
+                            for message in messages {
+                                tx_threader_message.send(message).await.unwrap();
+                            }
+                        }
+                    }
+                }
+                Some(message) = rx_threader.recv() => {
+                    match message {
+                        ThreaderMessage::StateUpdate(state_update) => {
+                            state.num_threaded_messages = state_update.num_threaded_messages;
+                            state.is_threaded = state_update.is_completed;
+                            let finished = update_state(&id, &mut state);
+                            tx.send(state.clone()).await.unwrap();
+                            if finished {
+                                info!("nyaodle controller finished id={}", id);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        state.is_completed = true;
+        tx.send(state.clone()).await.unwrap();
+    });
+
+    Ok(())
+}
+fn update_state(id: &str, new_state: &mut NyaodleState) -> bool {
+    info!("nyaodle state updated id={} state={:?}", id, new_state);
+    new_state.is_grubbed && new_state.is_threaded
+}

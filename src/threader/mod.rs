@@ -1,4 +1,7 @@
-use poise::serenity_prelude::ChannelId;
+use std::sync::mpsc;
+
+use anyhow::Result;
+use poise::serenity_prelude::{ChannelId, Message};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -13,4 +16,26 @@ impl Default for ThreaderConfiguration {
     fn default() -> Self {
         Self::AnotherChannel { channel_id: None }
     }
+}
+
+pub trait Threader {
+    fn thread(
+        &self,
+        tx: mpsc::Sender<ThreaderMessage>,
+        rx: mpsc::Receiver<MessageBulk>,
+    ) -> Result<()>;
+}
+
+pub enum ThreaderMessage {
+    StateUpdate(ThreaderState),
+}
+
+pub struct ThreaderState {
+    pub(crate) num_threaded_messages: u64,
+    pub(crate) is_completed: bool,
+}
+
+pub enum MessageBulk {
+    Continue(Message),
+    End,
 }
