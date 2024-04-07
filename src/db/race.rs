@@ -1,3 +1,5 @@
+use crate::ApplicationContext;
+
 use super::MongoDBExt;
 
 use anyhow::Result;
@@ -24,6 +26,14 @@ pub(super) struct WsRace {
     created_at: DateTime,
 }
 
+pub async fn race_interaction(ctx: &ApplicationContext<'_>) -> Result<bool> {
+    race(
+        ctx,
+        RaceKind::ReceiveInteraction,
+        ctx.interaction.id.to_string(),
+    )
+    .await
+}
 pub async fn race(ctx: &impl MongoDBExt, kind: RaceKind, token: String) -> Result<bool> {
     let mongo = &ctx.mongo();
     let race = mongo

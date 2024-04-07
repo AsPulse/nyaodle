@@ -9,7 +9,7 @@ use std::env;
 
 use dotenv::dotenv;
 
-pub(crate) struct Data {
+pub struct Data {
     pub mongo: db::MongoDB,
 }
 pub(crate) type Error = Box<dyn std::error::Error + Send + Sync>;
