@@ -72,14 +72,14 @@ pub(crate) async fn close_threaders_config(
         .interactions
         .delete_many(
             doc! {
-                "interactions.type": {
+                "interaction.type": {
                     "$in": [
                         "select_threaders",
                         "execute_nyaodle",
                         "close_threaders_config",
                     ]
                 },
-                "interactions.config_id": docs.config._id,
+                "interaction.config_id": docs.config._id,
             },
             None,
         )
