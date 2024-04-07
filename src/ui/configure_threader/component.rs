@@ -1,88 +1,11 @@
-use bson::doc;
-use bson::oid::ObjectId;
 use poise::serenity_prelude::{
-    ButtonStyle, ChannelType, ComponentInteractionDataKind, CreateActionRow, CreateButton,
-    CreateInteractionResponse, CreateInteractionResponseMessage, CreateSelectMenu,
+    ButtonStyle, ChannelType, CreateActionRow, CreateButton, CreateSelectMenu,
     CreateSelectMenuKind, CreateSelectMenuOption,
 };
-use poise::CreateReply;
 
-use crate::db::MongoDBExt;
-use crate::event::component_interaction::ComponentInteractionEvent;
 use crate::threader::ThreaderConfiguration;
-use crate::{ApplicationContext, Error};
 
-use super::configure_threader_interactions::ConfigureThreaderDocs;
-
-pub(crate) async fn configure_threader(ctx: ApplicationContext<'_>) -> Result<(), Error> {
-    ctx.defer_ephemeral().await?;
-
-    let docs = ConfigureThreaderDocs::create_and_insert(&ctx).await?;
-
-    ctx.send(
-        CreateReply::default()
-            .components(configure_threader_component(&docs))
-            .ephemeral(true),
-    )
-    .await?;
-
-    Ok(())
-}
-
-pub(crate) async fn update_configure_threader(
-    event: &ComponentInteractionEvent<'_>,
-) -> Result<(), Error> {
-    let selected_type = match &event.interaction.data.kind {
-        ComponentInteractionDataKind::StringSelect { values: data } => data[0].as_str(),
-        _ => {
-            panic!("Unexpected data kind: {:?}", event.interaction.data.kind);
-        }
-    };
-    let mut docs = ConfigureThreaderDocs::from_interaction_ids(
-        event.data,
-        ObjectId::parse_str(event.interaction.data.custom_id.clone())?,
-    )
-    .await?;
-
-    docs.config.configuration = if selected_type == "another_channel" {
-        ThreaderConfiguration::AnotherChannel { channel_id: None }
-    } else if selected_type == "new_thread" {
-        ThreaderConfiguration::NewThread {}
-    } else if selected_type == "new_forum_post" {
-        ThreaderConfiguration::NewForumPost {}
-    } else {
-        panic!("Unexpected selected_type: {}", selected_type);
-    };
-
-    event
-        .data
-        .mongo()
-        .threader_configurations
-        .update_one(
-            doc! {
-                "_id": docs.config._id,
-            },
-            doc! {
-                "$set": {
-                    "configuration": bson::to_bson(&docs.config.configuration)?
-                }
-            },
-            None,
-        )
-        .await?;
-
-    event
-        .interaction
-        .create_response(
-            event.ctx,
-            CreateInteractionResponse::UpdateMessage(
-                CreateInteractionResponseMessage::new()
-                    .components(configure_threader_component(&docs)),
-            ),
-        )
-        .await?;
-    Ok(())
-}
+use super::interactions::ConfigureThreaderDocs;
 
 pub fn configure_threader_component(docs: &ConfigureThreaderDocs) -> Vec<CreateActionRow> {
     let config = &docs.config.configuration;

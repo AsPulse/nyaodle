@@ -3,6 +3,7 @@ pub mod race;
 pub mod threader_configurations;
 
 use anyhow::Result;
+
 use log::info;
 
 use mongodb::bson::doc;

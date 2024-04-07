@@ -1,7 +1,7 @@
 //! あるチャンネルに投稿された、このメッセージ以降のメッセージを対象にする
 
 use crate::db::race::race_interaction;
-use crate::ui::configure_threader::configure_threader;
+use crate::ui::configure_threader::create::configure_threader;
 use poise::command;
 use poise::serenity_prelude as serenity;
 

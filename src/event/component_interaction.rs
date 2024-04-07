@@ -2,7 +2,7 @@ use log::warn;
 use poise::serenity_prelude as serenity;
 
 use crate::framework::interactions::PendingInteraction;
-use crate::ui::configure_threader::update_configure_threader;
+use crate::ui::configure_threader::update_threader_selection;
 use crate::{Data, Error};
 
 #[derive(Clone)]
@@ -18,7 +18,7 @@ impl ComponentInteractionEvent<'_> {
     pub async fn handle(&self) -> Result<(), Error> {
         match &self.db_interaction {
             PendingInteraction::SelectThreaders { .. } => {
-                update_configure_threader(self).await?;
+                update_threader_selection(self).await?;
             }
             _ => {
                 warn!(

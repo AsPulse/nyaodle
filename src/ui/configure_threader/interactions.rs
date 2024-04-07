@@ -3,14 +3,18 @@ use bson::oid::ObjectId;
 use bson::{doc, DateTime};
 use futures::StreamExt;
 
+use poise::serenity_prelude::{CreateInteractionResponse, CreateInteractionResponseMessage};
 use serde::{Deserialize, Serialize};
 
 use crate::db::interaction::PendingInteractionDoc;
 use crate::db::threader_configurations::ThreaderConfigurationDoc;
 use crate::db::MongoDBExt;
+use crate::event::component_interaction::ComponentInteractionEvent;
 use crate::framework::interactions::PendingInteraction;
 use crate::threader::ThreaderConfiguration;
 use crate::ApplicationContext;
+
+use super::component::configure_threader_component;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ConfigureThreaderDocs {
@@ -21,9 +25,38 @@ pub struct ConfigureThreaderDocs {
 }
 
 impl ConfigureThreaderDocs {
+    pub async fn from_event(event: &ComponentInteractionEvent<'_>) -> Result<Self> {
+        let id = ObjectId::parse_str(event.interaction.data.custom_id.clone())?;
+        Self::from_interaction_ids(event.data, id).await
+    }
+    pub async fn apply(&self, event: &ComponentInteractionEvent<'_>) -> Result<()> {
+        let mongo = event.data.mongo();
+        mongo
+            .threader_configurations
+            .update_one(
+                doc! { "_id": self.config._id },
+                doc! { "$set": { "configuration": bson::to_bson(&self.config.configuration)? } },
+                None,
+            )
+            .await?;
+        event
+            .interaction
+            .create_response(
+                event.ctx,
+                CreateInteractionResponse::UpdateMessage(
+                    CreateInteractionResponseMessage::new()
+                        .components(configure_threader_component(self)),
+                ),
+            )
+            .await?;
+        Ok(())
+    }
+}
+
+impl ConfigureThreaderDocs {
     pub async fn create_and_insert(ctx: &ApplicationContext<'_>) -> Result<Self> {
         let mongo = ctx.mongo();
-        let config = ThreaderConfigurationDoc {
+        let mut config = ThreaderConfigurationDoc {
             _id: None,
             configuration: ThreaderConfiguration::default(),
             created_at: DateTime::now(),
@@ -60,6 +93,7 @@ impl ConfigureThreaderDocs {
             .iter()
             .map(|i| ids.inserted_ids.get(i).unwrap().as_object_id().unwrap())
             .collect::<Vec<ObjectId>>();
+        config._id = Some(id);
         Ok(Self {
             config,
             select_id: ids[0],

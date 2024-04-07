@@ -3,7 +3,7 @@ use crate::ApplicationContext;
 use super::MongoDBExt;
 
 use anyhow::Result;
-use log::{info, warn};
+use log::{debug, info, warn};
 use mongodb::bson::oid::ObjectId;
 use mongodb::bson::{doc, DateTime};
 
@@ -61,7 +61,7 @@ pub async fn race(ctx: &impl MongoDBExt, kind: RaceKind, token: String) -> Resul
         return Ok(true);
     };
     if race.upserted_id.is_some() {
-        info!("Acquired: {:?} ({:?})", kind, token);
+        debug!("Acquired: {:?} ({:?})", kind, token);
         Ok(false)
     } else {
         info!("Skipped: {:?} ({:?})", kind, token);
