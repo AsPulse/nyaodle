@@ -1,4 +1,6 @@
+pub mod interaction;
 pub mod race;
+pub mod threader_configurations;
 
 use anyhow::Result;
 use log::info;
@@ -11,7 +13,7 @@ use std::env;
 
 use mongodb::options::{ClientOptions, IndexOptions};
 
-use crate::{ApplicationContext, Context};
+use crate::{ApplicationContext, Context, Data};
 
 use self::race::WsRace;
 
@@ -66,5 +68,11 @@ impl MongoDBExt for Context<'_> {
 impl MongoDBExt for ApplicationContext<'_> {
     fn mongo(&self) -> &MongoDB {
         &self.data().mongo
+    }
+}
+
+impl MongoDBExt for Data {
+    fn mongo(&self) -> &MongoDB {
+        &self.mongo
     }
 }

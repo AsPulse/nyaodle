@@ -13,12 +13,14 @@ use mongodb::options::UpdateOptions;
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RaceKind {
+    InteractionCreateEvent,
     CommandInvocation,
     ReceiveInteraction,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) struct WsRace {
+    #[serde(skip_serializing)]
     _id: Option<ObjectId>,
     kind: RaceKind,
     token: String,
