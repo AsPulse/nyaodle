@@ -1,8 +1,7 @@
-use std::sync::mpsc;
-
 use anyhow::Result;
 use poise::serenity_prelude::{ChannelId, Message};
 use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]

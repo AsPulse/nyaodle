@@ -1,6 +1,5 @@
 use anyhow::Result;
 use log::{info, warn};
-use poise::serenity_prelude::Message;
 use tokio::sync::mpsc;
 
 use crate::grubber::{Grubber, GrubberMessage};
@@ -23,9 +22,9 @@ pub async fn nyaodle(
     threader: impl Threader,
 ) -> Result<()> {
     info!("New nyaodle controller started with id={}", id);
-    let (tx_grubber, rx_grubber) = mpsc::channel::<GrubberMessage>(4);
-    let (tx_threader, rx_threader) = mpsc::channel::<ThreaderMessage>(4);
-    let (tx_threader_message, rx_threader_message) = mpsc::channel::<Message>(32);
+    let (tx_grubber, mut rx_grubber) = mpsc::channel::<GrubberMessage>(4);
+    let (tx_threader, mut rx_threader) = mpsc::channel::<ThreaderMessage>(4);
+    let (tx_threader_message, rx_threader_message) = mpsc::channel::<MessageBulk>(32);
 
     let mut state = NyaodleState {
         num_total_messages: 0,
@@ -36,8 +35,8 @@ pub async fn nyaodle(
         is_completed: false,
     };
 
-    let grubber_handle = grubber.grub(tx_grubber)?;
-    let threader_handle = threader.thread(tx_threader, rx_threader_message)?;
+    grubber.grub(tx_grubber)?;
+    threader.thread(tx_threader, rx_threader_message)?;
 
     tokio::spawn(async move {
         loop {

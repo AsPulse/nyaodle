@@ -1,3 +1,4 @@
+pub mod controller;
 pub mod db;
 pub mod event;
 pub mod framework;
