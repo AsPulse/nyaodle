@@ -46,6 +46,7 @@ pub async fn event_handler(
                             event,
                             db_interaction: interaction,
                             interaction: component_interaction.clone(),
+                            data,
                         }
                         .handle()
                         .await?;

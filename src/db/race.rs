@@ -39,8 +39,7 @@ pub async fn race_interaction(ctx: &ApplicationContext<'_>) -> Result<bool> {
 pub async fn race(ctx: &impl MongoDBExt, kind: RaceKind, token: String) -> Result<bool> {
     let mongo = &ctx.mongo();
     let race = mongo
-        .ws_race()
-        .await
+        .ws_race
         .update_one(
             doc! { "kind": bson::to_bson(&kind).unwrap(), "token": &token },
             doc! {

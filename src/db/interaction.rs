@@ -17,10 +17,6 @@ pub struct PendingInteractionDoc {
 }
 
 impl MongoDB {
-    pub async fn interactions(&self) -> mongodb::Collection<PendingInteractionDoc> {
-        self.db.collection::<PendingInteractionDoc>("interactions")
-    }
-
     /// インタラクションをデータベースから取得します。
     /// `delete_after` が `true` の場合、取得後にデータベースから削除します。
     pub async fn interaction_find(
@@ -28,12 +24,13 @@ impl MongoDB {
         id: &str,
         delete_after: bool,
     ) -> Result<Option<PendingInteraction>> {
-        let interactions = self.interactions().await;
         let filter = doc! { "_id": ObjectId::parse_str(id)? };
-        let pending_interaction = interactions
+        let pending_interaction = self
+            .interactions
             .find_one(filter.clone(), None)
             .await?
             .map(|doc| doc.interaction);
+        let interactions = self.interactions.clone();
 
         if delete_after && pending_interaction.is_some() {
             task::spawn(async move { interactions.delete_one(filter, None).await });
@@ -44,7 +41,7 @@ impl MongoDB {
 
     /// インタラクションをデータベースに挿入します。
     pub async fn interaction_insert(&self, interaction: PendingInteraction) -> Result<ObjectId> {
-        let interactions = self.interactions().await;
+        let interactions = &self.interactions;
         let doc = PendingInteractionDoc {
             _id: None,
             interaction,
