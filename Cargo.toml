@@ -14,6 +14,7 @@ env_logger = "0.11.3"
 futures = "0.3.30"
 log = "0.4.21"
 mongodb = "2.8.2"
+once_cell = "1.19.0"
 poise = "0.6.1"
 serde = "1.0.197"
 tokio = { version = "1.36.0", features = ["full"] }

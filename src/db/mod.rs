@@ -30,8 +30,6 @@ pub struct MongoDB {
     pub interactions: mongodb::Collection<PendingInteractionDoc>,
 }
 
-pub struct Collections {}
-
 impl MongoDB {
     pub async fn connect() -> Result<MongoDB> {
         let uri = env::var("MONGO_URI").expect("Expected MONGO_URI in the environment");
