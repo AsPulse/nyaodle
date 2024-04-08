@@ -2,6 +2,7 @@ pub mod component;
 pub mod create;
 pub mod interactions;
 
+use crate::ui::progress::execute_progress;
 use bson::doc;
 use log::{info, warn};
 use poise::serenity_prelude::{
@@ -52,6 +53,7 @@ pub(crate) async fn execute_nyaodle(event: &ComponentInteractionEvent<'_>) -> Re
         "executed configure_threader UI (execute_nyaodle) id={:?}",
         docs.config._id
     );
+    execute_progress(event, docs.config).await?;
     Ok(())
 }
 
