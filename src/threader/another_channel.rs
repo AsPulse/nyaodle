@@ -38,10 +38,6 @@ impl Threader for AnotherChannelThreader<'_> {
         tokio::spawn(async move {
             loop {
                 let Some(MessageBulk::Continue(message)) = rx.recv().await else {
-                    state.is_completed = true;
-                    tx.send(super::ThreaderMessage::StateUpdate(state.clone()))
-                        .await
-                        .unwrap();
                     break;
                 };
 
@@ -57,7 +53,16 @@ impl Threader for AnotherChannelThreader<'_> {
                     .flags(MessageFlags::SUPPRESS_NOTIFICATIONS);
 
                 webhook.execute(&ctx, false, execute).await.unwrap();
+                state.num_threaded_messages += 1;
+                tx.send(super::ThreaderMessage::StateUpdate(state.clone()))
+                    .await
+                    .unwrap();
             }
+            webhook.delete(ctx).await.unwrap();
+            state.is_completed = true;
+            tx.send(super::ThreaderMessage::StateUpdate(state.clone()))
+                .await
+                .unwrap();
         });
         Ok(())
     }
