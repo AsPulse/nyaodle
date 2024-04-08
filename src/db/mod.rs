@@ -4,6 +4,7 @@ pub mod threader_configurations;
 
 use anyhow::Result;
 
+use bson::oid::ObjectId;
 use log::info;
 
 use mongodb::bson::doc;
@@ -29,8 +30,6 @@ pub struct MongoDB {
     pub threader_configurations: mongodb::Collection<ThreaderConfigurationDoc>,
     pub interactions: mongodb::Collection<PendingInteractionDoc>,
 }
-
-pub struct Collections {}
 
 impl MongoDB {
     pub async fn connect() -> Result<MongoDB> {

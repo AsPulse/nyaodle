@@ -6,6 +6,7 @@ use poise::serenity_prelude::{self as serenity};
 use crate::db::race::RaceKind;
 use crate::db::MongoDBExt;
 
+use crate::framework::custom_id::CustomId;
 use crate::race;
 use crate::{Data, Error};
 
@@ -33,9 +34,14 @@ pub async fn event_handler(
         let mongo = data.mongo();
         match interaction {
             serenity::Interaction::Component(component_interaction) => {
-                let interaction = mongo
-                    .interaction_find(&component_interaction.data.custom_id, false)
-                    .await?;
+                let Some(id) = CustomId::from_string(&component_interaction.data.custom_id) else {
+                    info!(
+                        "skipping interaction custom_id={}",
+                        component_interaction.data.custom_id
+                    );
+                    return Ok(());
+                };
+                let interaction = mongo.interaction_find(&id.as_object_id(), false).await?;
                 match interaction {
                     Some(interaction) => {
                         ComponentInteractionEvent {
@@ -50,8 +56,8 @@ pub async fn event_handler(
                     }
                     None => {
                         warn!(
-                            "No handler found for custom_id: {}, interaction: {:?}",
-                            component_interaction.data.custom_id, component_interaction
+                            "No handler found for custom_id: {:?}, interaction: {:?}",
+                            id, component_interaction
                         );
                     }
                 }

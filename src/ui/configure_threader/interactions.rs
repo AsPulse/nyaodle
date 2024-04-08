@@ -10,6 +10,7 @@ use crate::db::interaction::PendingInteractionDoc;
 use crate::db::threader_configurations::ThreaderConfigurationDoc;
 use crate::db::MongoDBExt;
 use crate::event::component_interaction::ComponentInteractionEvent;
+use crate::framework::custom_id::CustomId;
 use crate::framework::interactions::PendingInteraction;
 use crate::grubber::NyaodleRequest;
 use crate::threader::ThreaderConfiguration;
@@ -28,7 +29,9 @@ pub struct ConfigureThreaderDocs {
 
 impl ConfigureThreaderDocs {
     pub async fn from_event(event: &ComponentInteractionEvent<'_>) -> Result<Self> {
-        let id = ObjectId::parse_str(event.interaction.data.custom_id.clone())?;
+        let id = CustomId::from_string(&event.interaction.data.custom_id)
+            .unwrap()
+            .as_object_id();
         Self::from_interaction_ids(event.data, id).await
     }
     pub async fn apply(&self, event: &ComponentInteractionEvent<'_>) -> Result<()> {

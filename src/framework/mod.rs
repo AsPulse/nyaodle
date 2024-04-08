@@ -1,3 +1,4 @@
+pub mod custom_id;
 pub mod interactions;
 pub mod register_commands_buttons;
 use std::env;

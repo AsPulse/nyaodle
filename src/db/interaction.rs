@@ -21,10 +21,10 @@ impl MongoDB {
     /// `delete_after` が `true` の場合、取得後にデータベースから削除します。
     pub async fn interaction_find(
         &self,
-        id: &str,
+        id: &ObjectId,
         delete_after: bool,
     ) -> Result<Option<PendingInteraction>> {
-        let filter = doc! { "_id": ObjectId::parse_str(id)? };
+        let filter = doc! { "_id": id };
         let pending_interaction = self
             .interactions
             .find_one(filter.clone(), None)
