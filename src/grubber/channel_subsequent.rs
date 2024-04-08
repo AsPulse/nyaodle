@@ -55,6 +55,7 @@ impl Grubber for ChannelSubsequentGrubber<'_> {
         &self,
         id: &str,
         tx: tokio::sync::mpsc::Sender<super::GrubberMessage>,
+        message_tx: tokio::sync::mpsc::Sender<MessageBulk>,
     ) -> Result<(), Error> {
         let ctx = self.ctx.clone();
         info!("New channel_subsequent grubber started with id={}", id);
@@ -83,11 +84,10 @@ impl Grubber for ChannelSubsequentGrubber<'_> {
         );
         let message_end = retrieve_final_message(&ctx, &channel).await?;
 
-        tx.send(GrubberMessage::MessageTranfer(vec![MessageBulk::Continue(
-            message_pointer.clone(),
-        )]))
-        .await
-        .unwrap();
+        message_tx
+            .send(MessageBulk::Continue(message_pointer.clone()))
+            .await
+            .unwrap();
         let id = id.to_string();
         tokio::spawn(async move {
             let ctx = &ctx;
@@ -110,9 +110,7 @@ impl Grubber for ChannelSubsequentGrubber<'_> {
                 if message_pointer.id == message_end.id {
                     state.num_total_messages = state.num_grubbed_messages;
                     state.is_completed = true;
-                    tx.send(GrubberMessage::MessageTranfer(vec![MessageBulk::End]))
-                        .await
-                        .unwrap();
+                    message_tx.send(MessageBulk::End).await.unwrap();
                     tx.send(GrubberMessage::StateUpdate(state.clone()))
                         .await
                         .unwrap();
@@ -130,11 +128,14 @@ impl Grubber for ChannelSubsequentGrubber<'_> {
                     "Grubbed {} messages in channel_subsequent id={}",
                     state.num_grubbed_messages, id
                 );
-                tx.send(GrubberMessage::MessageTranfer(
-                    iter.map(|mes| MessageBulk::Continue(mes.clone())).collect(),
-                ))
-                .await
-                .unwrap();
+
+                tx.send(GrubberMessage::StateUpdate(state.clone()))
+                    .await
+                    .unwrap();
+
+                for bulk in iter.map(|mes| MessageBulk::Continue(mes.clone())) {
+                    message_tx.send(bulk).await.unwrap();
+                }
             }
             info!("Channel_subsequent grubber finished id={}", id);
         });

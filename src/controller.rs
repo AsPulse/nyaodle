@@ -23,7 +23,7 @@ pub async fn nyaodle(
 ) -> Result<(), Error> {
     let (tx_grubber, mut rx_grubber) = mpsc::channel::<GrubberMessage>(4);
     let (tx_threader, mut rx_threader) = mpsc::channel::<ThreaderMessage>(4);
-    let (tx_threader_message, rx_threader_message) = mpsc::channel::<MessageBulk>(32);
+    let (tx_message, rx_message) = mpsc::channel::<MessageBulk>(32);
 
     let mut state = NyaodleState {
         num_total_messages: 0,
@@ -34,10 +34,8 @@ pub async fn nyaodle(
         is_completed: false,
     };
 
-    grubber.grub(&id, tx_grubber).await?;
-    threader
-        .thread(&id, tx_threader, rx_threader_message)
-        .await?;
+    grubber.grub(&id, tx_grubber, tx_message).await?;
+    threader.thread(&id, tx_threader, rx_message).await?;
 
     tokio::spawn(async move {
         info!("New nyaodle controller started with id={}", id);
@@ -54,11 +52,6 @@ pub async fn nyaodle(
                             if finished {
                                 warn!("nyaodle controller finished with grubber message id={}", id);
                                 break;
-                            }
-                        }
-                        GrubberMessage::MessageTranfer(messages) => {
-                            for message in messages {
-                                tx_threader_message.send(message).await.unwrap();
                             }
                         }
                     }

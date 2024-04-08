@@ -34,12 +34,12 @@ pub trait Grubber {
         &self,
         id: &str,
         tx: mpsc::Sender<GrubberMessage>,
+        message_tx: mpsc::Sender<MessageBulk>,
     ) -> impl std::future::Future<Output = Result<(), Error>> + std::marker::Send;
 }
 
 pub enum GrubberMessage {
     StateUpdate(GrubberState),
-    MessageTranfer(Vec<MessageBulk>),
 }
 
 #[derive(Debug, Clone)]
