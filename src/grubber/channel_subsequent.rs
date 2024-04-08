@@ -23,7 +23,14 @@ use crate::Error;
 
 use super::Grubber;
 
-#[command(context_menu_command = "これ以降のメッセージを移動")]
+#[cfg_attr(
+    debug_assertions,
+    command(context_menu_command = "[dev] これ以降のメッセージを移動")
+)]
+#[cfg_attr(
+    not(debug_assertions),
+    command(context_menu_command = "これ以降のメッセージを移動")
+)]
 pub async fn move_channel_subsequent(
     ctx: ApplicationContext<'_>,
     message: serenity::Message,
