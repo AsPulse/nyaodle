@@ -1209,6 +1209,7 @@ dependencies = [
  "futures",
  "log",
  "mongodb",
+ "once_cell",
  "poise",
  "serde",
  "tokio",
