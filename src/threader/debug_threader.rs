@@ -4,10 +4,13 @@ use tokio::sync::mpsc;
 use crate::Error;
 
 use super::{MessageBulk, Threader, ThreaderMessage, ThreaderState};
+use poise::serenity_prelude as serenity;
 
-pub struct DebugThreader;
+pub struct DebugThreader<'a> {
+    pub ctx: &'a serenity::Context,
+}
 
-impl Threader for DebugThreader {
+impl Threader for DebugThreader<'_> {
     async fn thread(
         &self,
         id: &str,

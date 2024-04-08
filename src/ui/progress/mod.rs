@@ -3,7 +3,6 @@ use log::{debug, info};
 use crate::controller::{nyaodle, NyaodleState};
 use crate::db::threader_configurations::ThreaderConfigurationDoc;
 use crate::event::component_interaction::ComponentInteractionEvent;
-use crate::threader::debug_threader::DebugThreader;
 use crate::Error;
 
 pub async fn execute_progress(
@@ -11,7 +10,7 @@ pub async fn execute_progress(
     config: ThreaderConfigurationDoc,
 ) -> Result<(), Error> {
     let grubber = config.request.create_grabber(event.ctx);
-    let threader = DebugThreader;
+    let threader = config.configuration.create_threader(event.ctx);
     let (tx, mut rx) = tokio::sync::mpsc::channel::<NyaodleState>(8);
     tokio::spawn(async move {
         loop {
