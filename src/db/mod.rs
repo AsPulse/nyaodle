@@ -4,7 +4,6 @@ pub mod threader_configurations;
 
 use anyhow::Result;
 
-use bson::oid::ObjectId;
 use log::info;
 
 use mongodb::bson::doc;
